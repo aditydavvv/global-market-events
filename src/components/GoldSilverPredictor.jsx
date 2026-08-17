@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { metalETFs, predictETFReaction } from '../data/metals';
 import { globalEvents } from '../data/events';
+import MetalPriceChart from './MetalPriceChart';
 import './GoldSilverPredictor.css';
 
 export default function GoldSilverPredictor() {
   const [selectedEvent, setSelectedEvent] = useState(globalEvents[0]);
   const [activeTab, setActiveTab] = useState('both');
+  const [activeChart, setActiveChart] = useState('gold');
 
   const goldPrediction = predictETFReaction(selectedEvent, 'gold');
   const silverPrediction = predictETFReaction(selectedEvent, 'silver');
@@ -156,6 +158,13 @@ export default function GoldSilverPredictor() {
           <span className="ep-desc">{selectedEvent.description}</span>
         </div>
       </div>
+
+      <div className="chart-tabs">
+        <button className={`chart-tab ${activeChart === 'gold' ? 'active gold' : ''}`} onClick={() => setActiveChart('gold')}>🥇 Gold Chart</button>
+        <button className={`chart-tab ${activeChart === 'silver' ? 'active silver' : ''}`} onClick={() => setActiveChart('silver')}>🥈 Silver Chart</button>
+      </div>
+
+      <MetalPriceChart metal={activeChart} />
 
       <div className="metal-tabs">
         <button className={`metal-tab ${activeTab === 'both' ? 'active' : ''}`} onClick={() => setActiveTab('both')}>Both</button>

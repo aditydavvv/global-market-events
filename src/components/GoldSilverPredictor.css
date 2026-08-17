@@ -80,6 +80,47 @@
   color: var(--text-muted);
 }
 
+.chart-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.chart-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.chart-tab:hover {
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.chart-tab.active {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+  background: var(--glow-blue);
+}
+
+.chart-tab.active.gold {
+  border-color: #ffc107;
+  background: rgba(255, 193, 7, 0.1);
+}
+
+.chart-tab.active.silver {
+  border-color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+}
+
 .event-selector {
   margin: 24px 0 16px;
 }

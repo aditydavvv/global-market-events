@@ -42,7 +42,7 @@ export default function LiveNews() {
       setLastFetch(new Date());
       localStorage.setItem('lastNewsFetch', new Date().toISOString());
       localStorage.setItem('cachedNews', JSON.stringify(news));
-    } catch (err) {
+    } catch {
       setError('Failed to fetch news. Will use cached data.');
       const cached = localStorage.getItem('cachedNews');
       if (cached) setLiveNews(JSON.parse(cached));
