@@ -1,0 +1,163 @@
+.global-events {
+  padding: 0 24px;
+}
+
+.sentiment-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.sentiment-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sentiment-indicators {
+  display: flex;
+  gap: 16px;
+}
+
+.sentiment-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.sentiment-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sentiment-item.positive { color: var(--accent-green); }
+.sentiment-item.positive .dot { background: var(--accent-green); }
+.sentiment-item.negative { color: var(--accent-red); }
+.sentiment-item.negative .dot { background: var(--accent-red); }
+.sentiment-item.mixed { color: var(--accent-yellow); }
+.sentiment-item.mixed .dot { background: var(--accent-yellow); }
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.filter-tab:hover {
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
+}
+
+.filter-tab.active {
+  background: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
+}
+
+.filter-tab .count {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.filter-tab.active .count {
+  background: rgba(255,255,255,0.25);
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sort-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+.sort-select:focus {
+  border-color: var(--accent-blue);
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+.no-events {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-tabs {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    flex-wrap: nowrap;
+  }
+
+  .filter-tab {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .sort-controls {
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,131 @@
+.sector-impact {
+  padding: 0 24px;
+}
+
+.sector-impact .section-header {
+  margin-bottom: 20px;
+}
+
+.sector-impact .section-header h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.sector-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sector-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.sector-card:hover {
+  border-color: var(--text-muted);
+  transform: translateX(4px);
+}
+
+.sector-rank {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  min-width: 28px;
+}
+
+.sector-info {
+  flex: 1;
+}
+
+.sector-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.sector-bar-container {
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.sector-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.sector-bar.positive {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.sector-bar.negative {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.sector-events {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.event-ref {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.sector-score {
+  text-align: right;
+  min-width: 80px;
+}
+
+.score-value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.sector-score.positive .score-value { color: var(--accent-green); }
+.sector-score.negative .score-value { color: var(--accent-red); }
+
+.score-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sector-score.positive .score-label { color: var(--accent-green); }
+.sector-score.negative .score-label { color: var(--accent-red); }
+
+@media (max-width: 600px) {
+  .sector-card {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .sector-score {
+    text-align: left;
+    min-width: unset;
+  }
+}

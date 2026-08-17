@@ -1,0 +1,24 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
