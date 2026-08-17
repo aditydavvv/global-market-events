@@ -2,6 +2,7 @@ import Header from './components/Header';
 import MarketOverview from './components/MarketOverview';
 import SectorImpact from './components/SectorImpact';
 import GoldSilverPredictor from './components/GoldSilverPredictor';
+import LiveNews from './components/LiveNews';
 import GlobalEvents from './components/GlobalEvents';
 import './App.css';
 
@@ -11,6 +12,7 @@ function App() {
       <Header />
       <main className="main-content">
         <MarketOverview />
+        <LiveNews />
         <SectorImpact />
         <GoldSilverPredictor />
         <GlobalEvents />
