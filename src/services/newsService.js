@@ -2,24 +2,37 @@ const NEWS_API_KEY = 'b4248a34effd43caad117695736bcc9c';
 const NEWS_API_BASE = 'https://newsapi.org/v2';
 
 const MARKET_KEYWORDS = {
+  strongPositive: [
+    'rate cut', 'dovish', 'stimulus', 'easing', 'infrastructure',
+    'beat expectations', 'FII inflow', 'rupee strength', 'India GDP',
+    'PMI above', 'manufacturing growth', 'ceasefire', 'peace deal'
+  ],
   positive: [
-    'rate cut', 'dovish', 'bullish', 'rally', 'surge', 'gain', 'boost',
-    'growth', 'boom', 'recovery', 'stimulus', 'easing', 'infrastructure',
-    'record high', 'beat expectations', 'strong', 'inflow', 'upgrade',
-    'trade deal', 'peace', 'ceasefire', 'agreement', 'cooperation',
-    'India GDP', 'manufacturing', 'PMI above', 'FII inflow', 'rupee strength'
+    'bullish', 'rally', 'surge', 'gain', 'boost', 'growth', 'boom',
+    'recovery', 'strong', 'inflow', 'upgrade', 'cooperation', 'agreement',
+    'record high', 'outperform', 'buyback', 'dividend'
+  ],
+  mildPositive: [
+    'stable', 'steady', 'support', 'resilient', 'improve', 'recover',
+    'hold steady', 'maintain', 'unchanged'
+  ],
+  mildNegative: [
+    'cautious', 'uncertain', 'volatile', 'mixed', 'tepid', 'sluggish',
+    'tepid', 'uneasy', 'wait and see'
   ],
   negative: [
-    'rate hike', 'hawkish', 'bearish', 'crash', 'plunge', 'slump',
-    'recession', 'war', 'sanctions', 'tariff', 'tension', 'crisis',
-    'default', 'downgrade', 'weak', 'outflow', 'inflation spike',
-    'supply chain', 'disruption', 'geopolitical', 'escalation',
-    'oil surge', 'dollar strength', 'capital flight', 'trade war'
+    'bearish', 'decline', 'fall', 'drop', 'slip', 'weak', 'outflow',
+    'downgrade', 'sell', 'pressure', 'headwind', 'slowdown'
+  ],
+  strongNegative: [
+    'crash', 'plunge', 'slump', 'recession', 'war', 'sanctions',
+    'tariff', 'tension', 'crisis', 'default', 'escalation',
+    'disruption', 'geopolitical', 'trade war', 'capital flight'
   ],
   goldPositive: [
     'safe haven', 'gold', 'uncertainty', 'fear', 'inflation',
     'rate cut', 'dovish', 'central bank buying', 'geopolitical',
-    'recession', 'crisis', 'currency weakness', 'debt'
+    'recession', 'crisis', 'currency weakness', 'debt', 'sovereign'
   ],
   goldNegative: [
     'risk on', 'equity rally', 'rate hike', 'hawkish',
@@ -27,18 +40,18 @@ const MARKET_KEYWORDS = {
   ],
   silverPositive: [
     'solar', 'EV', 'industrial demand', 'manufacturing',
-    'green energy', 'China recovery', 'PMI rise', 'commodity'
+    'green energy', 'China recovery', 'PMI rise', 'commodity demand'
   ],
   silverNegative: [
     'China slowdown', 'manufacturing decline', 'industrial weakness',
-    'PMI fall', 'commodity sell'
+    'PMI fall', 'commodity sell', 'demand destruction'
   ]
 };
 
 const CATEGORIES = {
   'fed': ['federal reserve', 'fed rate', 'fomc', 'powell', 'interest rate', 'monetary policy'],
   'rbi': ['rbi', 'repo rate', 'reserve bank of india', 'monetary policy committee', 'mpc'],
-  'geopolitical': ['war', 'conflict', 'sanctions', 'nato', 'military', 'missile', 'attack', 'tension'],
+  'geopolitical': ['war', 'conflict', 'sanctions', 'nato', 'military', 'missile', 'attack', 'tension', 'strait of hormuz', 'iran'],
   'commodity': ['crude oil', 'gold', 'silver', 'copper', 'commodity', 'opec', 'brent'],
   'currency': ['dollar', 'dxy', 'forex', 'currency', 'rupee', 'yen', 'euro', 'exchange rate'],
   'economic-data': ['gdp', 'pmi', 'cpi', 'inflation', 'jobs', 'unemployment', 'nfp', 'payroll', 'retail sales'],
@@ -60,17 +73,26 @@ function analyzeSentiment(title, description) {
   const text = `${title} ${description}`.toLowerCase();
   let score = 0;
 
-  MARKET_KEYWORDS.positive.forEach(kw => {
-    if (text.includes(kw)) score += 2;
-  });
+  MARKET_KEYWORDS.strongPositive.forEach(kw => { if (text.includes(kw)) score += 3; });
+  MARKET_KEYWORDS.positive.forEach(kw => { if (text.includes(kw)) score += 2; });
+  MARKET_KEYWORDS.mildPositive.forEach(kw => { if (text.includes(kw)) score += 1; });
+  MARKET_KEYWORDS.mildNegative.forEach(kw => { if (text.includes(kw)) score -= 1; });
+  MARKET_KEYWORDS.negative.forEach(kw => { if (text.includes(kw)) score -= 2; });
+  MARKET_KEYWORDS.strongNegative.forEach(kw => { if (text.includes(kw)) score -= 3; });
 
-  MARKET_KEYWORDS.negative.forEach(kw => {
-    if (text.includes(kw)) score -= 2;
-  });
+  // Context adjustments
+  if (text.includes('crude oil') && text.includes('rise')) score -= 1;
+  if (text.includes('crude oil') && text.includes('surge')) score -= 2;
+  if (text.includes('geopolitical') && text.includes('tension')) score -= 1;
+  if (text.includes('fii') && text.includes('buy')) score += 2;
+  if (text.includes('fii') && text.includes('sell')) score -= 2;
 
-  if (score > 3) return { direction: 'positive', magnitude: Math.min(90, 50 + score * 5) };
-  if (score < -3) return { direction: 'negative', magnitude: Math.min(90, 50 + Math.abs(score) * 5) };
-  return { direction: 'mixed', magnitude: Math.min(70, 30 + Math.abs(score) * 5) };
+  // More conservative magnitude scaling
+  if (score > 4) return { direction: 'positive', magnitude: Math.min(65, 35 + score * 3) };
+  if (score > 1) return { direction: 'positive', magnitude: Math.min(50, 25 + score * 4) };
+  if (score < -4) return { direction: 'negative', magnitude: Math.min(65, 35 + Math.abs(score) * 3) };
+  if (score < -1) return { direction: 'negative', magnitude: Math.min(50, 25 + Math.abs(score) * 4) };
+  return { direction: 'mixed', magnitude: Math.min(35, 15 + Math.abs(score) * 3) };
 }
 
 function analyzeMetalImpact(title, description, metal) {
@@ -83,33 +105,75 @@ function analyzeMetalImpact(title, description, metal) {
   keywords.pos.forEach(kw => { if (text.includes(kw)) score += 2; });
   keywords.neg.forEach(kw => { if (text.includes(kw)) score -= 2; });
 
-  if (score > 2) return { direction: 'positive', magnitude: Math.min(85, 50 + score * 6) };
-  if (score < -2) return { direction: 'negative', magnitude: Math.min(85, 50 + Math.abs(score) * 6) };
-  return { direction: 'neutral', magnitude: 30 };
+  if (score > 2) return { direction: 'positive', magnitude: Math.min(65, 35 + score * 4) };
+  if (score < -2) return { direction: 'negative', magnitude: Math.min(65, 35 + Math.abs(score) * 4) };
+  return { direction: 'neutral', magnitude: 20 };
 }
 
 function getSeverity(score) {
-  if (Math.abs(score) > 60) return 'high';
-  if (Math.abs(score) > 40) return 'medium';
+  if (Math.abs(score) > 50) return 'high';
+  if (Math.abs(score) > 30) return 'medium';
   return 'low';
 }
 
-function predictIndexImpact(sentiment, category) {
+function predictIndexImpact(sentiment, category, title) {
+  const text = (title || '').toLowerCase();
+
+  // Crude oil specific logic
+  if (text.includes('crude oil') || text.includes('brent') || text.includes('oil price')) {
+    if (sentiment.direction === 'negative') {
+      return {
+        'NIFTY 50': { impact: '-0.3% to -0.5%', direction: 'down' },
+        'SENSEX': { impact: '-0.4% to -0.6%', direction: 'down' },
+        'BANK NIFTY': { impact: '-0.3% to -0.5%', direction: 'down' },
+        'NIFTY IT': { impact: '-0.5% to -1.0%', direction: 'down' },
+        'NIFTY PHARMA': { impact: '+0.2% to +0.5%', direction: 'up' },
+        'NIFTY AVIATION': { impact: '-0.8% to -1.5%', direction: 'down' }
+      };
+    }
+  }
+
+  // Geopolitical tensions (war, conflict)
+  if (text.includes('war') || text.includes('conflict') || text.includes('geopolitical')) {
+    if (sentiment.direction === 'negative') {
+      return {
+        'NIFTY 50': { impact: '-0.2% to -0.5%', direction: 'down' },
+        'SENSEX': { impact: '-0.3% to -0.5%', direction: 'down' },
+        'INDIA VIX': { impact: '+3% to +8%', direction: 'up' },
+        'NIFTY DEFENCE': { impact: '+0.5% to +1.5%', direction: 'up' },
+        'NIFTY PHARMA': { impact: '+0.2% to +0.5%', direction: 'up' }
+      };
+    }
+  }
+
+  // Fed rate related
+  if (category === 'fed') {
+    if (sentiment.direction === 'positive') {
+      return {
+        'NIFTY 50': { impact: '+0.3% to +0.6%', direction: 'up' },
+        'SENSEX': { impact: '+0.25% to +0.5%', direction: 'up' },
+        'BANK NIFTY': { impact: '+0.5% to +0.8%', direction: 'up' },
+        'NIFTY IT': { impact: '+0.6% to +1.0%', direction: 'up' }
+      };
+    }
+  }
+
+  // Default conservative estimates
   const impacts = {
     positive: {
-      'NIFTY 50': { impact: '+0.5% to +1.2%', direction: 'up' },
-      'SENSEX': { impact: '+0.4% to +1.1%', direction: 'up' },
+      'NIFTY 50': { impact: '+0.2% to +0.5%', direction: 'up' },
+      'SENSEX': { impact: '+0.15% to +0.4%', direction: 'up' },
       'BANK NIFTY': category === 'rbi' || category === 'fed'
-        ? { impact: '+0.8% to +1.5%', direction: 'up' }
-        : { impact: '+0.3% to +0.9%', direction: 'up' },
+        ? { impact: '+0.4% to +0.7%', direction: 'up' }
+        : { impact: '+0.15% to +0.4%', direction: 'up' },
     },
     negative: {
-      'NIFTY 50': { impact: '-0.5% to -1.5%', direction: 'down' },
-      'SENSEX': { impact: '-0.4% to -1.4%', direction: 'down' },
-      'INDIA VIX': { impact: '+5% to +15%', direction: 'up' },
+      'NIFTY 50': { impact: '-0.2% to -0.5%', direction: 'down' },
+      'SENSEX': { impact: '-0.25% to -0.5%', direction: 'down' },
+      'INDIA VIX': { impact: '+2% to +5%', direction: 'up' },
     },
     mixed: {
-      'NIFTY 50': { impact: '-0.2% to +0.3%', direction: 'neutral' },
+      'NIFTY 50': { impact: '-0.1% to +0.15%', direction: 'neutral' },
     }
   };
   return impacts[sentiment.direction] || impacts.mixed;
@@ -158,7 +222,7 @@ function processArticle(article) {
   const sentiment = analyzeSentiment(article.title, article.description || '');
   const goldImpact = analyzeMetalImpact(article.title, article.description || '', 'gold');
   const silverImpact = analyzeMetalImpact(article.title, article.description || '', 'silver');
-  const indexImpact = predictIndexImpact(sentiment, category);
+  const indexImpact = predictIndexImpact(sentiment, category, article.title);
 
   return {
     id: article.url,
@@ -186,21 +250,31 @@ function processArticle(article) {
 }
 
 function generateImpactDescription(sentiment, category, title) {
+  const text = (title || '').toLowerCase();
+
+  if (text.includes('crude oil') || text.includes('brent') || text.includes('oil price')) {
+    return 'Crude oil price movements directly impact India\'s import bill ($120B+ annually). Higher oil widens trade deficit, pressures INR, and raises inflation. Aviation, OMCs, and FMCG face margin pressure. Pharma and IT may show defensive rotation.';
+  }
+
+  if (text.includes('geopolitical') || text.includes('war') || text.includes('conflict')) {
+    return 'Geopolitical tensions trigger risk-off sentiment. FII may reduce exposure temporarily. Defensive sectors (Pharma, Gold, Defence) tend to outperform. VIX rises. Impact is usually short-lived unless actual supply disruption occurs.';
+  }
+
   const descs = {
     positive: {
-      fed: 'Dovish Fed signals boost Indian markets. Rate-sensitive sectors (Banking, IT, Real Estate) likely to benefit. FII inflows expected to increase.',
-      geopolitical: 'Positive geopolitical development reduces risk premium. Market sentiment improves across sectors.',
-      commodity: 'Favorable commodity price movement supports Indian manufacturing and consumer sectors.',
-      default: 'Positive global development supports Indian market sentiment. Risk-on mood expected.'
+      fed: 'Dovish Fed signals boost Indian markets. Rate-sensitive sectors (Banking, IT, Real Estate) benefit. FII inflows expected. Typical impact: NIFTY +0.3-0.6%.',
+      geopolitical: 'Positive geopolitical development reduces risk premium. Market sentiment improves. Typical impact: NIFTY +0.1-0.3%.',
+      commodity: 'Favorable commodity price movement supports Indian manufacturing. Typical impact: NIFTY +0.1-0.2%.',
+      default: 'Positive global development supports Indian market sentiment. Risk-on mood expected. Typical impact: NIFTY +0.1-0.3%.'
     },
     negative: {
-      fed: 'Hawkish Fed stance pressures Indian markets. Higher US rates may trigger FII outflows. USD strength weighs on INR.',
-      geopolitical: 'Geopolitical tensions increase risk aversion. Safe-haven flows may trigger FII selling in Indian equities.',
-      commodity: 'Rising commodity prices increase input costs for Indian companies. Margin pressure expected in manufacturing.',
-      default: 'Negative global development pressures Indian market sentiment. Defensive positioning recommended.'
+      fed: 'Hawkish Fed stance pressures Indian markets. Higher US rates may trigger FII outflows. USD strength weighs on INR. Typical impact: NIFTY -0.2-0.5%.',
+      geopolitical: 'Geopolitical tensions increase risk aversion. Defensive sectors (Pharma, Gold) may outperform. Impact depends on actual disruption vs. threat. Typical impact: NIFTY -0.2-0.5%.',
+      commodity: 'Rising commodity prices increase input costs. Impact is gradual, not immediate. Typical impact: NIFTY -0.1-0.3%.',
+      default: 'Negative global development pressures Indian market sentiment. Defensive positioning recommended. Typical impact: NIFTY -0.2-0.4%.'
     },
     mixed: {
-      default: 'Mixed signals from global markets. Indian markets may see sector-specific movements rather than broad directional move.'
+      default: 'Mixed signals from global markets. Sector-specific movements expected rather than broad directional move. Typical impact: NIFTY ±0.1-0.2%.'
     }
   };
 
