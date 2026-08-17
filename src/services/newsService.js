@@ -1,4 +1,4 @@
-const NEWS_API_KEY = 'YOUR_NEWSAPI_KEY';
+const NEWS_API_KEY = 'b4248a34effd43caad117695736bcc9c';
 const NEWS_API_BASE = 'https://newsapi.org/v2';
 
 const MARKET_KEYWORDS = {
