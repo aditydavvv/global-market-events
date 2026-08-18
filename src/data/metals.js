@@ -245,7 +245,7 @@ export const metalETFs = {
   }
 };
 
-export function predictETFReaction(event, metal) {
+export function predictETFReaction(event, metal, recentPriceChange = null) {
   const data = metalETFs[metal];
   if (!data) return null;
 
@@ -268,14 +268,45 @@ export function predictETFReaction(event, metal) {
     };
   }
 
-  const bestMatch = matchingReactions.reduce((best, curr) =>
-    curr.magnitude > best.magnitude ? curr : best
-  );
+  const positiveCount = matchingReactions.filter(r => r.direction === 'positive').length;
+  const negativeCount = matchingReactions.filter(r => r.direction === 'negative').length;
+  const total = matchingReactions.length;
+  const positiveBias = (positiveCount - negativeCount) / total;
 
   const avgMagnitude = matchingReactions.reduce((sum, r) => sum + r.magnitude, 0) / matchingReactions.length;
-  const confidence = Math.min(95, Math.round(avgMagnitude + (matchingReactions.length * 5)));
+  let confidence = Math.min(95, Math.round(avgMagnitude + (matchingReactions.length * 5)));
 
-  const direction = bestMatch.direction;
+  let direction;
+  if (positiveBias > 0.5) {
+    direction = 'positive';
+  } else if (positiveBias < -0.5) {
+    direction = 'negative';
+  } else {
+    const weightedScore = matchingReactions.reduce((sum, r) => {
+      const weight = r.direction === 'positive' ? 1 : r.direction === 'negative' ? -1 : 0;
+      return sum + (weight * r.magnitude);
+    }, 0) / matchingReactions.length;
+    direction = weightedScore > 10 ? 'positive' : weightedScore < -10 ? 'negative' : 'mixed';
+  }
+
+  if (recentPriceChange !== null && recentPriceChange !== undefined) {
+    const absChange = Math.abs(recentPriceChange);
+    if (absChange > 1.5) {
+      const priceDirection = recentPriceChange > 0 ? 'positive' : 'negative';
+      if (direction !== priceDirection && direction !== 'mixed') {
+        confidence = Math.max(25, confidence - 25);
+        direction = 'mixed';
+      } else if (direction === priceDirection) {
+        confidence = Math.min(95, confidence + 5);
+      }
+    }
+  }
+
+  const bestMatch = matchingReactions.reduce((best, curr) => {
+    if (curr.direction !== direction && direction !== 'mixed') return best;
+    return curr.magnitude > best.magnitude ? curr : best;
+  }, matchingReactions[0]);
+
   const expectedMove = direction === 'positive'
     ? `+${(bestMatch.magnitude * 0.03).toFixed(1)}% to +${(bestMatch.magnitude * 0.06).toFixed(1)}%`
     : direction === 'negative'
@@ -293,6 +324,7 @@ export function predictETFReaction(event, metal) {
     timeframe: metal === 'silver' ? '3-10 days (higher volatility)' : '2-7 days',
     metal: metal,
     etf: data.etfIndia,
-    relatedEvents: matchingReactions.map(r => r.event)
+    relatedEvents: matchingReactions.map(r => r.event),
+    directionBias: positiveBias > 0.3 ? 'historically-positive' : positiveBias < -0.3 ? 'historically-negative' : 'mixed'
   };
 }

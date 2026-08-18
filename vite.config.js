@@ -5,4 +5,26 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/',
+  server: {
+    proxy: {
+      '/yahoo': {
+        target: 'https://query1.finance.yahoo.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/yahoo/, ''),
+        secure: false,
+      },
+      '/yahoo2': {
+        target: 'https://query2.finance.yahoo.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/yahoo2/, ''),
+        secure: false,
+      },
+      '/groww': {
+        target: 'https://groww.in',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/groww/, ''),
+        secure: false,
+      },
+    },
+  },
 })

@@ -1,16 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { metalETFs, predictETFReaction } from '../data/metals';
 import { globalEvents } from '../data/events';
+import { fetchCommodityPrices } from '../services/marketDataService';
 import MetalPriceChart from './MetalPriceChart';
 import './GoldSilverPredictor.css';
 
 export default function GoldSilverPredictor() {
   const [selectedEvent, setSelectedEvent] = useState(globalEvents[0]);
   const [activeTab, setActiveTab] = useState('both');
-  const [activeChart, setActiveChart] = useState('gold');
+  const [activeChart, setActiveChart] = useState('gold-etf');
+  const [priceChanges, setPriceChanges] = useState({ gold: null, silver: null });
 
-  const goldPrediction = predictETFReaction(selectedEvent, 'gold');
-  const silverPrediction = predictETFReaction(selectedEvent, 'silver');
+  useEffect(() => {
+    const loadPrices = async () => {
+      const prices = await fetchCommodityPrices();
+      if (prices.silver) setPriceChanges(prev => ({ ...prev, silver: prices.silver.changePercent }));
+      if (prices.gold) setPriceChanges(prev => ({ ...prev, gold: prices.gold.changePercent }));
+    };
+    loadPrices();
+    const interval = setInterval(loadPrices, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const goldPrediction = predictETFReaction(selectedEvent, 'gold', priceChanges.gold);
+  const silverPrediction = predictETFReaction(selectedEvent, 'silver', priceChanges.silver);
 
   const goldData = metalETFs.gold;
   const silverData = metalETFs.silver;
@@ -160,11 +173,12 @@ export default function GoldSilverPredictor() {
       </div>
 
       <div className="chart-tabs">
-        <button className={`chart-tab ${activeChart === 'gold' ? 'active gold' : ''}`} onClick={() => setActiveChart('gold')}>🥇 Gold Chart</button>
-        <button className={`chart-tab ${activeChart === 'silver' ? 'active silver' : ''}`} onClick={() => setActiveChart('silver')}>🥈 Silver Chart</button>
+        <button className={`chart-tab ${activeChart === 'gold-etf' ? 'active gold' : ''}`} onClick={() => setActiveChart('gold-etf')}>🥇 Gold ETF</button>
+        <button className={`chart-tab ${activeChart === 'silver-etf' ? 'active silver' : ''}`} onClick={() => setActiveChart('silver-etf')}>🥈 Silver ETF</button>
+        <button className={`chart-tab ${activeChart === 'tata-silver-etf' ? 'active tata' : ''}`} onClick={() => setActiveChart('tata-silver-etf')}>🏆 Tata Silver ETF</button>
       </div>
 
-      <MetalPriceChart metal={activeChart} />
+      <MetalPriceChart etfType={activeChart} />
 
       <div className="metal-tabs">
         <button className={`metal-tab ${activeTab === 'both' ? 'active' : ''}`} onClick={() => setActiveTab('both')}>Both</button>

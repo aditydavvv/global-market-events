@@ -42,4 +42,7 @@
 .pred-value.positive { color: var(--accent-green); }
 .pred-value.negative { color: var(--accent-red); }
 .prediction-note { font-size: 0.65rem; color: var(--text-dim); text-align: center; margin: 0; }
+.data-source { display: block; font-size: 0.6rem; color: var(--accent-green); margin-top: 2px; }
+.groww-details { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.detail-chip { padding: 4px 10px; border-radius: 6px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); font-size: 0.7rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 @media (max-width: 768px) { .chart-wrapper { height: 250px; } .prediction-values { grid-template-columns: 1fr; } .chart-controls { flex-direction: column; align-items: flex-start; } }

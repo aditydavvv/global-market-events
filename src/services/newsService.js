@@ -39,12 +39,14 @@ const MARKET_KEYWORDS = {
     'strong dollar', 'bond yield rise', 'economic growth'
   ],
   silverPositive: [
-    'solar', 'EV', 'industrial demand', 'manufacturing',
+    'solar', 'EV', 'industrial demand', 'manufacturing growth',
     'green energy', 'China recovery', 'PMI rise', 'commodity demand'
   ],
   silverNegative: [
     'China slowdown', 'manufacturing decline', 'industrial weakness',
-    'PMI fall', 'commodity sell', 'demand destruction'
+    'PMI fall', 'commodity sell', 'demand destruction', 'USD strength',
+    'dollar rally', 'risk off', 'recession fear', 'factory shutdown',
+    'silver decline', 'metal drop', 'industrial output fall'
   ]
 };
 
@@ -102,12 +104,19 @@ function analyzeMetalImpact(title, description, metal) {
     : { pos: MARKET_KEYWORDS.silverPositive, neg: MARKET_KEYWORDS.silverNegative };
 
   let score = 0;
-  keywords.pos.forEach(kw => { if (text.includes(kw)) score += 2; });
-  keywords.neg.forEach(kw => { if (text.includes(kw)) score -= 2; });
+  let posCount = 0;
+  let negCount = 0;
+  keywords.pos.forEach(kw => { if (text.includes(kw)) { score += 2; posCount++; } });
+  keywords.neg.forEach(kw => { if (text.includes(kw)) { score -= 2; negCount++; } });
 
-  if (score > 2) return { direction: 'positive', magnitude: Math.min(65, 35 + score * 4) };
-  if (score < -2) return { direction: 'negative', magnitude: Math.min(65, 35 + Math.abs(score) * 4) };
-  return { direction: 'neutral', magnitude: 20 };
+  const totalMatches = posCount + negCount;
+  const netBias = totalMatches > 0 ? (posCount - negCount) / totalMatches : 0;
+
+  if (score > 4 && netBias > 0.3) return { direction: 'positive', magnitude: Math.min(55, 30 + score * 3) };
+  if (score < -4 && netBias < -0.3) return { direction: 'negative', magnitude: Math.min(55, 30 + Math.abs(score) * 3) };
+  if (score > 2) return { direction: 'positive', magnitude: Math.min(40, 20 + score * 3) };
+  if (score < -2) return { direction: 'negative', magnitude: Math.min(40, 20 + Math.abs(score) * 3) };
+  return { direction: 'neutral', magnitude: 15 };
 }
 
 function getSeverity(score) {
