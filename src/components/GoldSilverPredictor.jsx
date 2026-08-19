@@ -3,6 +3,7 @@ import { metalETFs, predictETFReaction } from '../data/metals';
 import { globalEvents } from '../data/events';
 import { fetchCommodityPrices } from '../services/marketDataService';
 import { fetchAllMarketDepth } from '../services/marketDepthService';
+import { fetchSilverAnalysis, predictTataSilverETF } from '../services/silverAnalysisService';
 import MetalPriceChart from './MetalPriceChart';
 import './GoldSilverPredictor.css';
 
@@ -12,6 +13,7 @@ export default function GoldSilverPredictor() {
   const [activeChart, setActiveChart] = useState('gold-etf');
   const [priceChanges, setPriceChanges] = useState({ gold: null, silver: null });
   const [marketDepth, setMarketDepth] = useState({ gold: null, silver: null, tataSilver: null });
+  const [silverAnalysis, setSilverAnalysis] = useState(null);
 
   useEffect(() => {
     const loadPrices = async () => {
@@ -23,21 +25,27 @@ export default function GoldSilverPredictor() {
       const depth = await fetchAllMarketDepth();
       setMarketDepth(depth);
     };
+    const loadSilverAnalysis = async () => {
+      const analysis = await fetchSilverAnalysis();
+      setSilverAnalysis(analysis);
+    };
     loadPrices();
     loadDepth();
+    loadSilverAnalysis();
     const priceInterval = setInterval(loadPrices, 300000);
     const depthInterval = setInterval(loadDepth, 300000);
+    const analysisInterval = setInterval(loadSilverAnalysis, 300000);
     return () => {
       clearInterval(priceInterval);
       clearInterval(depthInterval);
+      clearInterval(analysisInterval);
     };
   }, []);
 
   const goldPrediction = predictETFReaction(selectedEvent, 'gold', priceChanges.gold, marketDepth.gold);
-  const silverPrediction = predictETFReaction(selectedEvent, 'silver', priceChanges.silver, marketDepth.silver);
+  const tataSilverPrediction = predictTataSilverETF(silverAnalysis, marketDepth.tataSilver);
 
   const goldData = metalETFs.gold;
-  const silverData = metalETFs.silver;
 
   const renderPrediction = (prediction, metal, data) => {
     if (!prediction) return null;
@@ -175,8 +183,8 @@ export default function GoldSilverPredictor() {
   return (
     <section className="gold-silver-section">
       <div className="section-header">
-        <h2>Gold & Silver ETF Predictions</h2>
-        <span className="subtitle">AI-driven predictions based on historical event reactions</span>
+        <h2>Tata Silver ETF Predictions</h2>
+        <span className="subtitle">Real-time analysis based on global silver prices, market depth & sentiment</span>
       </div>
 
       <div className="current-prices">
@@ -238,13 +246,99 @@ export default function GoldSilverPredictor() {
 
       <div className="metal-tabs">
         <button className={`metal-tab ${activeTab === 'both' ? 'active' : ''}`} onClick={() => setActiveTab('both')}>Both</button>
-        <button className={`metal-tab gold ${activeTab === 'gold' ? 'active' : ''}`} onClick={() => setActiveTab('gold')}>🥇 Gold Only</button>
-        <button className={`metal-tab silver ${activeTab === 'silver' ? 'active' : ''}`} onClick={() => setActiveTab('silver')}>🥈 Silver Only</button>
+        <button className={`metal-tab gold ${activeTab === 'gold' ? 'active' : ''}`} onClick={() => setActiveTab('gold')}>Gold Only</button>
+        <button className={`metal-tab silver ${activeTab === 'silver' ? 'active' : ''}`} onClick={() => setActiveTab('silver')}>Tata Silver Only</button>
       </div>
 
       <div className="predictions-container">
         {(activeTab === 'both' || activeTab === 'gold') && renderPrediction(goldPrediction, 'gold', goldData)}
-        {(activeTab === 'both' || activeTab === 'silver') && renderPrediction(silverPrediction, 'silver', silverData)}
+        {(activeTab === 'both' || activeTab === 'silver') && tataSilverPrediction && (
+          <div className={`prediction-card ${tataSilverPrediction.prediction === 'positive' ? 'positive' : tataSilverPrediction.prediction === 'negative' ? 'negative' : 'neutral'}`}>
+            <div className="pred-header">
+              <div className="pred-metal-icon">🏆</div>
+              <div>
+                <h3 className="pred-metal-name">Tata Silver ETF Prediction</h3>
+                <p className="pred-etf">Tata Silver Exchange Traded Fund</p>
+              </div>
+              <div className={`pred-direction-badge ${tataSilverPrediction.prediction === 'positive' ? 'positive' : tataSilverPrediction.prediction === 'negative' ? 'negative' : 'neutral'}`}>
+                {tataSilverPrediction.prediction === 'positive' ? '📈 BULLISH' :
+                 tataSilverPrediction.prediction === 'negative' ? '📉 BEARISH' : '↔️ NEUTRAL'}
+              </div>
+            </div>
+
+            <div className="pred-stats">
+              <div className="pred-stat">
+                <span className="pred-stat-label">Expected Move</span>
+                <span className={`pred-stat-value ${tataSilverPrediction.prediction === 'positive' ? 'positive' : tataSilverPrediction.prediction === 'negative' ? 'negative' : 'neutral'}`}>{tataSilverPrediction.expectedMove}</span>
+              </div>
+              <div className="pred-stat">
+                <span className="pred-stat-label">Confidence</span>
+                <div className="confidence-bar-wrapper">
+                  <div className="confidence-bar" style={{ width: `${tataSilverPrediction.confidence}%` }}></div>
+                  <span className="confidence-text">{tataSilverPrediction.confidence}%</span>
+                </div>
+              </div>
+              <div className="pred-stat">
+                <span className="pred-stat-label">Timeframe</span>
+                <span className="pred-stat-value timeframe">{tataSilverPrediction.timeframe}</span>
+              </div>
+              <div className="pred-stat">
+                <span className="pred-stat-label">Silver Trend</span>
+                <span className={`pred-stat-value ${tataSilverPrediction.silverData?.trend?.direction === 'up' ? 'positive' : tataSilverPrediction.silverData?.trend?.direction === 'down' ? 'negative' : 'neutral'}`}>
+                  {tataSilverPrediction.silverData?.trend?.direction?.toUpperCase()} ({tataSilverPrediction.silverData?.trend?.strength}%)
+                </span>
+              </div>
+            </div>
+
+            <div className="pred-reasoning">
+              <h4>Why This Prediction?</h4>
+              <p>{tataSilverPrediction.reasoning}</p>
+            </div>
+
+            {tataSilverPrediction.analysis && tataSilverPrediction.analysis.signals.length > 0 && (
+              <div className="pred-pattern">
+                <h4>Market Signals</h4>
+                <div className="signal-tags">
+                  {tataSilverPrediction.analysis.signals.map((signal, i) => (
+                    <span key={i} className="signal-tag">{signal}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {tataSilverPrediction.marketDepth && (
+              <div className="market-depth-section">
+                <h4>📊 Market Depth (Live)</h4>
+                <div className="depth-grid">
+                  <div className="depth-item">
+                    <span className="depth-label">Buyers</span>
+                    <span className="depth-value buyers">{tataSilverPrediction.marketDepth.buyers?.toLocaleString()}</span>
+                    <span className="depth-pct">{tataSilverPrediction.marketDepth.buyPct}%</span>
+                  </div>
+                  <div className="depth-item">
+                    <span className="depth-label">Sellers</span>
+                    <span className="depth-value sellers">{tataSilverPrediction.marketDepth.sellers?.toLocaleString()}</span>
+                    <span className="depth-pct">{tataSilverPrediction.marketDepth.sellPct}%</span>
+                  </div>
+                  <div className="depth-item">
+                    <span className="depth-label">Buy/Sell Ratio</span>
+                    <span className={`depth-ratio ${tataSilverPrediction.marketDepth.sentiment}`}>{tataSilverPrediction.marketDepth.ratio}</span>
+                  </div>
+                  <div className="depth-item">
+                    <span className="depth-label">Sentiment</span>
+                    <span className={`depth-sentiment ${tataSilverPrediction.marketDepth.sentiment}`}>
+                      {tataSilverPrediction.marketDepth.sentiment === 'strong-buyers' && '🟢 Strong Buying'}
+                      {tataSilverPrediction.marketDepth.sentiment === 'buyers' && '🟢 Buying'}
+                      {tataSilverPrediction.marketDepth.sentiment === 'neutral' && '🟡 Neutral'}
+                      {tataSilverPrediction.marketDepth.sentiment === 'sellers' && '🔴 Selling'}
+                      {tataSilverPrediction.marketDepth.sentiment === 'strong-sellers' && '🔴 Strong Selling'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="historical-reference">
