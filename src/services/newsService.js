@@ -191,12 +191,12 @@ function predictIndexImpact(sentiment, category, title) {
 export async function fetchGlobalNews(page = 1, pageSize = 20) {
   try {
     const queries = [
-      'India stock market',
-      'global economy impact India',
-      'Federal Reserve India',
-      'crude oil India market',
-      'geopolitical market impact',
-      'gold silver market news'
+      'gold price today',
+      'silver price today',
+      'Federal Reserve interest rate',
+      'geopolitical tension market',
+      'safe haven assets gold silver',
+      'US dollar index DXY'
     ];
 
     const allArticles = [];

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { metalETFs, predictETFReaction } from '../data/metals';
 import { globalEvents } from '../data/events';
 import { fetchCommodityPrices } from '../services/marketDataService';
+import { fetchAllMarketDepth } from '../services/marketDepthService';
 import MetalPriceChart from './MetalPriceChart';
 import './GoldSilverPredictor.css';
 
@@ -10,6 +11,7 @@ export default function GoldSilverPredictor() {
   const [activeTab, setActiveTab] = useState('both');
   const [activeChart, setActiveChart] = useState('gold-etf');
   const [priceChanges, setPriceChanges] = useState({ gold: null, silver: null });
+  const [marketDepth, setMarketDepth] = useState({ gold: null, silver: null, tataSilver: null });
 
   useEffect(() => {
     const loadPrices = async () => {
@@ -17,13 +19,22 @@ export default function GoldSilverPredictor() {
       if (prices.silver) setPriceChanges(prev => ({ ...prev, silver: prices.silver.changePercent }));
       if (prices.gold) setPriceChanges(prev => ({ ...prev, gold: prices.gold.changePercent }));
     };
+    const loadDepth = async () => {
+      const depth = await fetchAllMarketDepth();
+      setMarketDepth(depth);
+    };
     loadPrices();
-    const interval = setInterval(loadPrices, 300000);
-    return () => clearInterval(interval);
+    loadDepth();
+    const priceInterval = setInterval(loadPrices, 300000);
+    const depthInterval = setInterval(loadDepth, 300000);
+    return () => {
+      clearInterval(priceInterval);
+      clearInterval(depthInterval);
+    };
   }, []);
 
-  const goldPrediction = predictETFReaction(selectedEvent, 'gold', priceChanges.gold);
-  const silverPrediction = predictETFReaction(selectedEvent, 'silver', priceChanges.silver);
+  const goldPrediction = predictETFReaction(selectedEvent, 'gold', priceChanges.gold, marketDepth.gold);
+  const silverPrediction = predictETFReaction(selectedEvent, 'silver', priceChanges.silver, marketDepth.silver);
 
   const goldData = metalETFs.gold;
   const silverData = metalETFs.silver;
@@ -111,6 +122,52 @@ export default function GoldSilverPredictor() {
             </div>
           </div>
         )}
+
+        {prediction.marketDepth && (
+          <div className="market-depth-section">
+            <h4>📊 Market Depth (Live)</h4>
+            <div className="depth-grid">
+              <div className="depth-item">
+                <span className="depth-label">Buyers</span>
+                <span className="depth-value buyers">{prediction.marketDepth.buyers?.toLocaleString()}</span>
+                <span className="depth-pct">{prediction.marketDepth.buyPct}%</span>
+              </div>
+              <div className="depth-item">
+                <span className="depth-label">Sellers</span>
+                <span className="depth-value sellers">{prediction.marketDepth.sellers?.toLocaleString()}</span>
+                <span className="depth-pct">{prediction.marketDepth.sellPct}%</span>
+              </div>
+              <div className="depth-item">
+                <span className="depth-label">Buy/Sell Ratio</span>
+                <span className={`depth-ratio ${prediction.marketDepth.sentiment}`}>{prediction.marketDepth.ratio}</span>
+              </div>
+              <div className="depth-item">
+                <span className="depth-label">Sentiment</span>
+                <span className={`depth-sentiment ${prediction.marketDepth.sentiment}`}>
+                  {prediction.marketDepth.sentiment === 'strong-buyers' && '🟢 Strong Buying'}
+                  {prediction.marketDepth.sentiment === 'buyers' && '🟢 Buying'}
+                  {prediction.marketDepth.sentiment === 'neutral' && '🟡 Neutral'}
+                  {prediction.marketDepth.sentiment === 'sellers' && '🔴 Selling'}
+                  {prediction.marketDepth.sentiment === 'strong-sellers' && '🔴 Strong Selling'}
+                </span>
+              </div>
+            </div>
+            {prediction.marketDepth.signal && (
+              <div className={`depth-signal ${prediction.marketDepth.signal.bias}`}>
+                <span className="signal-icon">
+                  {prediction.marketDepth.signal.bias === 'buyers' && '📈'}
+                  {prediction.marketDepth.signal.bias === 'sellers' && '📉'}
+                  {prediction.marketDepth.signal.bias === 'neutral' && '➡️'}
+                </span>
+                <span className="signal-text">
+                  {prediction.marketDepth.signal.bias === 'buyers' && `Buyers dominating (+${prediction.marketDepth.signal.strength.toFixed(0)}% bias)`}
+                  {prediction.marketDepth.signal.bias === 'sellers' && `Sellers dominating (+${prediction.marketDepth.signal.strength.toFixed(0)}% bias)`}
+                  {prediction.marketDepth.signal.bias === 'neutral' && 'Balanced market depth'}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -173,9 +230,8 @@ export default function GoldSilverPredictor() {
       </div>
 
       <div className="chart-tabs">
-        <button className={`chart-tab ${activeChart === 'gold-etf' ? 'active gold' : ''}`} onClick={() => setActiveChart('gold-etf')}>🥇 Gold ETF</button>
-        <button className={`chart-tab ${activeChart === 'silver-etf' ? 'active silver' : ''}`} onClick={() => setActiveChart('silver-etf')}>🥈 Silver ETF</button>
-        <button className={`chart-tab ${activeChart === 'tata-silver-etf' ? 'active tata' : ''}`} onClick={() => setActiveChart('tata-silver-etf')}>🏆 Tata Silver ETF</button>
+        <button className={`chart-tab ${activeChart === 'gold-etf' ? 'active gold' : ''}`} onClick={() => setActiveChart('gold-etf')}>Gold ETF</button>
+        <button className={`chart-tab ${activeChart === 'tata-silver-etf' ? 'active tata' : ''}`} onClick={() => setActiveChart('tata-silver-etf')}>Tata Silver ETF</button>
       </div>
 
       <MetalPriceChart etfType={activeChart} />

@@ -245,7 +245,7 @@ export const metalETFs = {
   }
 };
 
-export function predictETFReaction(event, metal, recentPriceChange = null) {
+export function predictETFReaction(event, metal, recentPriceChange = null, marketDepth = null) {
   const data = metalETFs[metal];
   if (!data) return null;
 
@@ -302,6 +302,31 @@ export function predictETFReaction(event, metal, recentPriceChange = null) {
     }
   }
 
+  let depthSignal = null;
+  if (marketDepth && marketDepth.total > 0) {
+    const ratio = marketDepth.ratio;
+
+    if (ratio > 1.2) {
+      depthSignal = { bias: 'buyers', strength: Math.min(20, (ratio - 1) * 50) };
+      if (direction === 'negative') {
+        confidence = Math.max(25, confidence - 15);
+        direction = 'mixed';
+      } else if (direction === 'positive') {
+        confidence = Math.min(95, confidence + 8);
+      }
+    } else if (ratio < 0.8) {
+      depthSignal = { bias: 'sellers', strength: Math.min(20, (1 - ratio) * 50) };
+      if (direction === 'positive') {
+        confidence = Math.max(25, confidence - 15);
+        direction = 'mixed';
+      } else if (direction === 'negative') {
+        confidence = Math.min(95, confidence + 8);
+      }
+    } else {
+      depthSignal = { bias: 'neutral', strength: 0 };
+    }
+  }
+
   const bestMatch = matchingReactions.reduce((best, curr) => {
     if (curr.direction !== direction && direction !== 'mixed') return best;
     return curr.magnitude > best.magnitude ? curr : best;
@@ -325,6 +350,15 @@ export function predictETFReaction(event, metal, recentPriceChange = null) {
     metal: metal,
     etf: data.etfIndia,
     relatedEvents: matchingReactions.map(r => r.event),
-    directionBias: positiveBias > 0.3 ? 'historically-positive' : positiveBias < -0.3 ? 'historically-negative' : 'mixed'
+    directionBias: positiveBias > 0.3 ? 'historically-positive' : positiveBias < -0.3 ? 'historically-negative' : 'mixed',
+    marketDepth: marketDepth ? {
+      buyers: marketDepth.buyers,
+      sellers: marketDepth.sellers,
+      buyPct: marketDepth.buyPct,
+      sellPct: marketDepth.sellPct,
+      ratio: marketDepth.ratio,
+      sentiment: marketDepth.sentiment,
+      signal: depthSignal
+    } : null
   };
 }

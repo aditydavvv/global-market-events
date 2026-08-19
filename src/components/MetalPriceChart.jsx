@@ -29,15 +29,6 @@ const ETF_CONFIG = {
     bgColor: 'rgba(255,193,7,0.1)',
     currency: '₹'
   },
-  'silver-etf': {
-    symbol: 'SILVERBEES.NS',
-    name: 'Silver ETF',
-    fullName: 'Nippon India Silver BeES',
-    emoji: '🥈',
-    color: '#94a3b8',
-    bgColor: 'rgba(148,163,184,0.1)',
-    currency: '₹'
-  },
   'tata-silver-etf': {
     symbol: 'TATSILV.NS',
     name: 'Tata Silver ETF',
@@ -119,7 +110,15 @@ export default function MetalPriceChart({ etfType = 'gold-etf' }) {
   }, [etfType, timeframe, config.symbol]);
 
   const prices = data.map(d => d.close).filter(Boolean);
-  const dates = data.map(d => new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+  if (liveData?.price && prices.length > 0) {
+    prices[prices.length - 1] = liveData.price;
+  }
+  const dates = data.map((d, i) => {
+    if (i === data.length - 1 && liveData?.price) {
+      return new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    }
+    return new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  });
   const trend = calculateTrend(prices);
   const sma20 = calculateSMA(prices);
   const preds = showPred ? predictFuture(prices) : [];

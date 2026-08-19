@@ -2,7 +2,6 @@ const GROWW_BASE = '/groww';
 
 const ETF_PAGES = {
   'gold-etf': { path: '/etfs/nippon-india-gold-bes', name: 'Gold ETF', fullName: 'Nippon India Gold BeES', symbol: 'GOLDBEES' },
-  'silver-etf': { path: '/etfs/nippon-india-silver-etf', name: 'Silver ETF', fullName: 'Nippon India Silver ETF', symbol: 'SILVERBEES' },
   'tata-silver-etf': { path: '/etfs/tata-silver-exchange-traded-fund', name: 'Tata Silver ETF', fullName: 'Tata Silver Exchange Traded Fund', symbol: 'TATSILV' }
 };
 
@@ -91,14 +90,12 @@ export async function fetchGrowwETFData(etfType) {
 }
 
 export async function fetchAllGrowwETFs() {
-  const [goldETF, silverETF, tataSilver] = await Promise.allSettled([
+  const [goldETF, tataSilver] = await Promise.allSettled([
     fetchGrowwETFData('gold-etf'),
-    fetchGrowwETFData('silver-etf'),
     fetchGrowwETFData('tata-silver-etf')
   ]);
   return {
     goldETF: goldETF.status === 'fulfilled' ? goldETF.value : null,
-    silverETF: silverETF.status === 'fulfilled' ? silverETF.value : null,
     tataSilverETF: tataSilver.status === 'fulfilled' ? tataSilver.value : null
   };
 }
