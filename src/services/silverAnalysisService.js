@@ -21,10 +21,12 @@ export async function fetchSilverAnalysis() {
     const silverQuotes = silverData.indicators?.quote?.[0] || {};
 
     const goldMeta = goldData?.meta;
+    const goldQuotes = goldData?.indicators?.quote?.[0] || {};
 
     const usdinrMeta = usdinrData?.meta;
 
     const silverPrices = silverQuotes.close?.filter(Boolean) || [];
+    const goldPrices = goldQuotes.close?.filter(Boolean) || [];
 
     const currentSilver = silverMeta.regularMarketPrice;
     const prevSilver = silverMeta.chartPreviousClose || silverMeta.previousClose;
@@ -39,6 +41,21 @@ export async function fetchSilverAnalysis() {
     const usdChange = currentUSDRate && prevUSDRate ? ((currentUSDRate - prevUSDRate) / prevUSDRate) * 100 : 0;
 
     const goldSilverRatio = currentGold && currentSilver ? currentGold / currentSilver : null;
+
+    let goldSilverRatioChange = 0;
+    if (goldSilverRatio && goldPrices.length >= 3 && silverPrices.length >= 3) {
+      const pairs = Math.min(goldPrices.length, silverPrices.length);
+      const ratioSeries = [];
+      for (let i = 1; i <= pairs; i++) {
+        const g = goldPrices[goldPrices.length - i];
+        const s = silverPrices[silverPrices.length - i];
+        if (g && s) ratioSeries.push(g / s);
+      }
+      if (ratioSeries.length >= 3) {
+        const ratioAvg = ratioSeries.reduce((a, b) => a + b, 0) / ratioSeries.length;
+        goldSilverRatioChange = ((goldSilverRatio - ratioAvg) / ratioAvg) * 100;
+      }
+    }
 
     let momentum3d = 0;
     let momentum5d = 0;
@@ -76,11 +93,12 @@ export async function fetchSilverAnalysis() {
         change: goldChange
       },
       goldSilverRatio,
+      goldSilverRatioChange,
       usdInr: {
         rate: currentUSDRate,
         change: usdChange
       },
-      analysis: generateAnalysis(silverChange, goldChange, goldSilverRatio, momentum3d, momentum5d, trend, volatility)
+      analysis: generateAnalysis(silverChange, goldChange, goldSilverRatio, goldSilverRatioChange, momentum3d, momentum5d, trend, volatility)
     };
   } catch (error) {
     console.error('Silver analysis failed:', error);
@@ -89,7 +107,7 @@ export async function fetchSilverAnalysis() {
 }
 
 function calculateTrend(prices) {
-  if (prices.length < 2) return { direction: 'neutral', strength: 0 };
+  if (prices.length < 3) return { direction: 'neutral', strength: 0, r2: 0 };
   const n = prices.length;
   const xMean = (n - 1) / 2;
   const yMean = prices.reduce((a, b) => a + b, 0) / n;
@@ -99,13 +117,23 @@ function calculateTrend(prices) {
     den += (i - xMean) * (i - xMean);
   }
   const slope = den !== 0 ? num / den : 0;
+  const intercept = yMean - slope * xMean;
+  let sse = 0;
+  for (let i = 0; i < n; i++) {
+    sse += Math.pow(prices[i] - (intercept + slope * i), 2);
+  }
+  const sst = prices.reduce((s, p) => s + Math.pow(p - yMean, 2), 0);
+  const r2 = sst > 0 ? Math.max(0, 1 - sse / sst) : 0;
+  const driftPctPerDay = yMean > 0 ? (slope / yMean) * 100 : 0;
+  const effectiveDrift = driftPctPerDay * r2;
   return {
-    direction: slope > 0.1 ? 'up' : slope < -0.1 ? 'down' : 'neutral',
-    strength: Math.min(100, Math.round(Math.abs(slope) / yMean * 10000))
+    direction: effectiveDrift > 0.08 ? 'up' : effectiveDrift < -0.08 ? 'down' : 'neutral',
+    strength: Math.min(100, Math.round(Math.abs(effectiveDrift) * 100)),
+    r2: parseFloat(r2.toFixed(2))
   };
 }
 
-function generateAnalysis(silverChange, goldChange, goldSilverRatio, momentum3d, momentum5d, trend, volatility) {
+function generateAnalysis(silverChange, goldChange, goldSilverRatio, goldSilverRatioChange, momentum3d, momentum5d, trend, volatility) {
   const signals = [];
   let bullishScore = 0;
   let bearishScore = 0;
@@ -126,11 +154,19 @@ function generateAnalysis(silverChange, goldChange, goldSilverRatio, momentum3d,
     bearishScore += 1;
   }
 
-  if (goldSilverRatio && goldSilverRatio > 85) {
-    signals.push('Gold/Silver ratio elevated - silver undervalued');
+  if (goldSilverRatio && goldSilverRatio > 90) {
+    signals.push(`Gold/Silver ratio ${goldSilverRatio.toFixed(0)} historically elevated - silver cheap vs gold`);
     bullishScore += 2;
-  } else if (goldSilverRatio && goldSilverRatio < 60) {
-    signals.push('Gold/Silver ratio low - silver overvalued');
+  } else if (goldSilverRatio && goldSilverRatio < 55) {
+    signals.push(`Gold/Silver ratio ${goldSilverRatio.toFixed(0)} historically low - silver rich vs gold`);
+    bearishScore += 1;
+  }
+
+  if (goldSilverRatioChange < -1) {
+    signals.push('Silver outperforming gold this week (ratio falling)');
+    bullishScore += 1;
+  } else if (goldSilverRatioChange > 1) {
+    signals.push('Silver underperforming gold this week (ratio rising)');
     bearishScore += 1;
   }
 
@@ -142,15 +178,15 @@ function generateAnalysis(silverChange, goldChange, goldSilverRatio, momentum3d,
     bearishScore += 1;
   }
 
-  if (trend.direction === 'up') {
-    signals.push('Uptrend intact');
+  if (trend.direction === 'up' && (trend.r2 ?? 0) > 0.3) {
+    signals.push(`Uptrend intact (fit quality ${Math.round(trend.r2 * 100)}%)`);
     bullishScore += 1;
-  } else if (trend.direction === 'down') {
-    signals.push('Downtrend in place');
+  } else if (trend.direction === 'down' && (trend.r2 ?? 0) > 0.3) {
+    signals.push(`Downtrend in place (fit quality ${Math.round(trend.r2 * 100)}%)`);
     bearishScore += 1;
   }
 
-  if (volatility > 3) {
+  if (volatility > 2.5) {
     signals.push('High volatility - expect larger moves');
   }
 
@@ -172,82 +208,86 @@ function generateAnalysis(silverChange, goldChange, goldSilverRatio, momentum3d,
 }
 
 export function predictTataSilverETF(silverAnalysis, marketDepth = null) {
-  if (!silverAnalysis) return null;
+  if (!silverAnalysis || !silverAnalysis.silver) return null;
 
-  const { silver, gold, goldSilverRatio, usdInr, analysis } = silverAnalysis;
+  const { silver, gold, goldSilverRatio, goldSilverRatioChange, usdInr } = silverAnalysis;
 
-  let direction = 'neutral';
-  let confidence = 50;
-  const reasons = [];
+  const votes = [];
+  const addVote = (weight, value, reason) => {
+    if (!Number.isFinite(value)) return;
+    votes.push({ weight, value: Math.max(-1, Math.min(1, value)), reason });
+  };
 
-  if (silver.trend.direction === 'up') {
-    direction = 'positive';
-    confidence += 15;
-    reasons.push('Global silver in uptrend');
-  } else if (silver.trend.direction === 'down') {
-    direction = 'negative';
-    confidence += 15;
-    reasons.push('Global silver in downtrend');
+  const trendDir = silver.trend.direction === 'up' ? 1 : silver.trend.direction === 'down' ? -1 : 0;
+  if (trendDir !== 0) {
+    addVote(2, trendDir * Math.min(1, (silver.trend.r2 ?? 0) + 0.3),
+      `${silver.trend.direction}trend with ${Math.round((silver.trend.r2 ?? 0) * 100)}% fit quality`);
   }
 
-  if (silver.change > 1) {
-    if (direction === 'positive') confidence += 10;
-    else { direction = 'positive'; confidence = 55; }
-    reasons.push(`Silver up ${silver.change.toFixed(1)}% today`);
-  } else if (silver.change < -1) {
-    if (direction === 'negative') confidence += 10;
-    else { direction = 'negative'; confidence = 55; }
-    reasons.push(`Silver down ${Math.abs(silver.change).toFixed(1)}% today`);
+  if (Math.abs(silver.momentum3d) > 0.5) {
+    addVote(1.5, silver.momentum3d / 3, `${Math.abs(silver.momentum3d).toFixed(1)}% 3-day momentum`);
+  }
+  if (Math.abs(silver.momentum5d) > 0.8) {
+    addVote(1, silver.momentum5d / 5, `${Math.abs(silver.momentum5d).toFixed(1)}% 5-day momentum`);
   }
 
-  if (goldSilverRatio && goldSilverRatio > 85) {
-    if (direction === 'positive') confidence += 5;
-    reasons.push(`Gold/Silver ratio ${goldSilverRatio.toFixed(0)} - silver undervalued`);
+  if (Math.abs(silver.change) > 0.4) {
+    addVote(1.5, silver.change / 2, `today's ${silver.change >= 0 ? '+' : ''}${silver.change.toFixed(1)}% move`);
   }
 
-  if (usdInr.change > 0.3) {
-    if (direction === 'positive') confidence += 5;
-    reasons.push('USD/INR rising supports Indian ETF');
-  } else if (usdInr.change < -0.3) {
-    if (direction === 'negative') confidence += 5;
-    reasons.push('USD/INR falling pressures Indian ETF');
+  if (gold && Number.isFinite(gold.change) && Math.abs(gold.change) > 0.4) {
+    addVote(1, gold.change / 2, `gold ${gold.change >= 0 ? '+' : ''}${gold.change.toFixed(1)}% in the same direction`);
   }
 
-  if (marketDepth && marketDepth.total > 0) {
-    const ratio = marketDepth.ratio;
-    if (ratio > 1.2) {
-      if (direction === 'negative') {
-        direction = 'mixed';
-        confidence = Math.max(30, confidence - 20);
-      } else if (direction === 'positive') {
-        confidence += 8;
-      }
-      reasons.push(`Strong buyer presence (${(ratio * 100).toFixed(0)}% buy ratio)`);
-    } else if (ratio < 0.8) {
-      if (direction === 'positive') {
-        direction = 'mixed';
-        confidence = Math.max(30, confidence - 20);
-      } else if (direction === 'negative') {
-        confidence += 8;
-      }
-      reasons.push(`Strong seller pressure (${((1 - ratio) * 100).toFixed(0)}% sell ratio)`);
-    }
+  if (usdInr && Number.isFinite(usdInr.change) && Math.abs(usdInr.change) > 0.15) {
+    addVote(0.5, usdInr.change > 0 ? 0.7 : -0.7,
+      `USD/INR ${usdInr.change >= 0 ? 'up' : 'down'} ${Math.abs(usdInr.change).toFixed(2)}%`);
   }
 
-  confidence = Math.min(92, Math.max(25, confidence));
+  if (Number.isFinite(goldSilverRatioChange) && Math.abs(goldSilverRatioChange) > 1) {
+    addVote(1, -goldSilverRatioChange / 2,
+      `silver ${goldSilverRatioChange < 0 ? 'outperforming' : 'underperforming'} gold this week`);
+  }
 
+  if (marketDepth && marketDepth.total > 0 && Number.isFinite(marketDepth.buyPct)) {
+    addVote(1.5, (marketDepth.buyPct - 50) / 25, `order book ${marketDepth.buyPct}% buyers`);
+  }
+
+  const totalWeight = votes.reduce((s, v) => s + v.weight, 0) || 1;
+  const score = votes.reduce((s, v) => s + v.weight * v.value, 0) / totalWeight;
+  const agreement = votes.reduce((s, v) => s + Math.sign(v.value) * v.weight, 0) / totalWeight;
+
+  const direction = score > 0.22 ? 'positive' : score < -0.22 ? 'negative' : 'neutral';
+
+  let confidence = Math.round(45 + Math.abs(agreement) * 35);
+  if ((silver.volatility || 0) > 2.5) confidence -= 8;
+  if (votes.length <= 2) confidence -= 5;
+  confidence = Math.max(25, Math.min(88, confidence));
+
+  const dailyVol = Math.max(0.4, silver.volatility || 1);
+  const band = dailyVol * Math.sqrt(3);
   const expectedMove = direction === 'positive'
-    ? `+${(silver.trend.strength * 0.03 + 0.5).toFixed(1)}% to +${(silver.trend.strength * 0.06 + 1).toFixed(1)}%`
+    ? `+${(band * 0.5).toFixed(1)}% to +${(band * 1.2).toFixed(1)}%`
     : direction === 'negative'
-      ? `-${(silver.trend.strength * 0.02 + 0.3).toFixed(1)}% to -${(silver.trend.strength * 0.05 + 0.8).toFixed(1)}%`
-      : '±0.3% to ±0.8%';
+      ? `-${(band * 0.5).toFixed(1)}% to -${(band * 1.2).toFixed(1)}%`
+      : `±${(band * 0.6).toFixed(1)}%`;
+
+  const topReasons = votes
+    .filter(v => Math.sign(v.value) === (direction === 'negative' ? -1 : 1))
+    .sort((a, b) => Math.abs(b.weight * b.value) - Math.abs(a.weight * a.value))
+    .slice(0, 4)
+    .map(v => v.reason);
+
+  const reasoning = direction === 'neutral'
+    ? 'Signals are balanced across trend, momentum and order flow - no directional edge right now.'
+    : `${direction === 'positive' ? 'Bullish' : 'Bearish'} bias driven by: ${topReasons.join('; ')}.`;
 
   return {
     prediction: direction,
     confidence,
     expectedMove,
-    reasoning: reasons.join('. ') + '.',
-    analysis: analysis,
+    reasoning,
+    analysis: silverAnalysis.analysis,
     silverData: silver,
     goldData: gold,
     goldSilverRatio,

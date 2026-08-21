@@ -274,31 +274,32 @@ export function predictETFReaction(event, metal, recentPriceChange = null, marke
   const positiveBias = (positiveCount - negativeCount) / total;
 
   const avgMagnitude = matchingReactions.reduce((sum, r) => sum + r.magnitude, 0) / matchingReactions.length;
-  let confidence = Math.min(95, Math.round(avgMagnitude + (matchingReactions.length * 5)));
 
   let direction;
-  if (positiveBias > 0.5) {
+  if (positiveBias > 0.34) {
     direction = 'positive';
-  } else if (positiveBias < -0.5) {
+  } else if (positiveBias < -0.34) {
     direction = 'negative';
   } else {
     const weightedScore = matchingReactions.reduce((sum, r) => {
       const weight = r.direction === 'positive' ? 1 : r.direction === 'negative' ? -1 : 0;
       return sum + (weight * r.magnitude);
     }, 0) / matchingReactions.length;
-    direction = weightedScore > 10 ? 'positive' : weightedScore < -10 ? 'negative' : 'mixed';
+    direction = weightedScore > 10 ? 'positive' : weightedScore < -10 ? 'negative' : 'neutral';
   }
 
-  if (recentPriceChange !== null && recentPriceChange !== undefined) {
-    const absChange = Math.abs(recentPriceChange);
-    if (absChange > 1.5) {
-      const priceDirection = recentPriceChange > 0 ? 'positive' : 'negative';
-      if (direction !== priceDirection && direction !== 'mixed') {
-        confidence = Math.max(25, confidence - 25);
-        direction = 'mixed';
-      } else if (direction === priceDirection) {
-        confidence = Math.min(95, confidence + 5);
-      }
+  let confidence = Math.round(42 + Math.abs(positiveBias) * 28 + Math.min(16, (total - 1) * 4));
+
+  if (recentPriceChange !== null && recentPriceChange !== undefined && Math.abs(recentPriceChange) > 0.5) {
+    const priceDir = recentPriceChange > 0 ? 1 : -1;
+    const histDir = direction === 'positive' ? 1 : direction === 'negative' ? -1 : 0;
+    if (histDir !== 0 && histDir === priceDir) {
+      confidence += 6;
+    } else if (histDir !== 0) {
+      confidence -= 12;
+    } else {
+      direction = priceDir > 0 ? 'positive' : 'negative';
+      confidence = Math.max(confidence, 45);
     }
   }
 
@@ -309,34 +310,37 @@ export function predictETFReaction(event, metal, recentPriceChange = null, marke
     if (ratio > 1.2) {
       depthSignal = { bias: 'buyers', strength: Math.min(20, (ratio - 1) * 50) };
       if (direction === 'negative') {
-        confidence = Math.max(25, confidence - 15);
-        direction = 'mixed';
+        confidence -= ratio > 1.4 ? 15 : 8;
+        if (ratio > 1.4) direction = 'neutral';
       } else if (direction === 'positive') {
-        confidence = Math.min(95, confidence + 8);
+        confidence += 8;
       }
     } else if (ratio < 0.8) {
       depthSignal = { bias: 'sellers', strength: Math.min(20, (1 - ratio) * 50) };
       if (direction === 'positive') {
-        confidence = Math.max(25, confidence - 15);
-        direction = 'mixed';
+        confidence -= ratio < 0.6 ? 15 : 8;
+        if (ratio < 0.6) direction = 'neutral';
       } else if (direction === 'negative') {
-        confidence = Math.min(95, confidence + 8);
+        confidence += 8;
       }
     } else {
       depthSignal = { bias: 'neutral', strength: 0 };
     }
   }
 
+  confidence = Math.max(25, Math.min(88, confidence));
+
   const bestMatch = matchingReactions.reduce((best, curr) => {
-    if (curr.direction !== direction && direction !== 'mixed') return best;
+    if (curr.direction !== direction && direction !== 'neutral') return best;
     return curr.magnitude > best.magnitude ? curr : best;
   }, matchingReactions[0]);
 
+  const histPct = parseFloat((bestMatch.avgReaction?.match(/([+-]?\d+\.?\d*)\s*%/) || [])[1]) || avgMagnitude * 0.05;
   const expectedMove = direction === 'positive'
-    ? `+${(bestMatch.magnitude * 0.03).toFixed(1)}% to +${(bestMatch.magnitude * 0.06).toFixed(1)}%`
+    ? `+${(histPct * 0.4).toFixed(1)}% to +${(histPct * 0.9).toFixed(1)}%`
     : direction === 'negative'
-      ? `-${(bestMatch.magnitude * 0.02).toFixed(1)}% to -${(bestMatch.magnitude * 0.04).toFixed(1)}%`
-      : `±${(bestMatch.magnitude * 0.02).toFixed(1)}%`;
+      ? `-${(histPct * 0.4).toFixed(1)}% to -${(histPct * 0.9).toFixed(1)}%`
+      : `±${(histPct * 0.5).toFixed(1)}%`;
 
   return {
     prediction: direction,
