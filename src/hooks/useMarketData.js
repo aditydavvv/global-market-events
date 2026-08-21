@@ -7,7 +7,7 @@ import {
 } from '../services/marketDataService';
 
 const CACHE_KEY = 'marketDataCache';
-const CACHE_DURATION = 24 * 60 * 60 * 1000;
+const CACHE_DURATION = 5 * 60 * 1000;
 
 function getISTTime() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
@@ -103,19 +103,12 @@ export function useMarketData() {
       setLastUpdated(new Date(cached.timestamp));
       setLoading(false);
     }
-    if (isPreMarket()) {
-      setMarketStatus('pre-market');
-      if (!fetchedRef.current) fetchAllData(!cached);
-    } else if (isMarketOpen()) {
-      setMarketStatus('open');
-      if (!fetchedRef.current) fetchAllData(!cached);
-    } else if (isWeekend()) {
-      setMarketStatus('weekend');
-      if (!cached) fetchAllData(true);
-    } else {
-      setMarketStatus('closed');
-      if (!cached) fetchAllData(true);
-    }
+    setMarketStatus(
+      isWeekend() ? 'weekend' : isPreMarket() ? 'pre-market' : isMarketOpen() ? 'open' : 'closed'
+    );
+    if (!fetchedRef.current) fetchAllData(!cached);
+    const interval = setInterval(() => fetchAllData(false), CACHE_DURATION);
+    return () => clearInterval(interval);
   }, [fetchAllData]);
 
   const refresh = useCallback(() => {

@@ -2,10 +2,14 @@ const TIMEOUT_MS = 8000;
 
 const STRATEGIES = [
   (url) => url,
-  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`
+  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(withCacheBust(url))}`,
+  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(withCacheBust(url))}`,
+  (url) => `https://corsproxy.io/?url=${encodeURIComponent(withCacheBust(url))}`
 ];
+
+function withCacheBust(url) {
+  return `${url}${url.includes('?') ? '&' : '?'}_cb=${Date.now()}`;
+}
 
 async function attempt(url, options) {
   const controller = new AbortController();
