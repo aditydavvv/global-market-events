@@ -3,7 +3,7 @@ export const metalETFs = {
     name: "Gold",
     symbol: "GOLD",
     etfIndia: "Gold BeES / SGB / Gold ETFs",
-    currentPrice: 73450,
+    currentPrice: 143200,
     currency: "INR/10g",
     unit: "per 10 grams",
     historicalReactions: [
@@ -125,7 +125,7 @@ export const metalETFs = {
     name: "Silver",
     symbol: "SILVER",
     etfIndia: "Silver ETFs / iShares Silver Trust",
-    currentPrice: 89500,
+    currentPrice: 213000,
     currency: "INR/kg",
     unit: "per kg",
     historicalReactions: [

@@ -48,6 +48,16 @@ export default function GoldSilverPredictor() {
   const goldData = metalETFs.gold;
   const silverData = metalETFs.silver;
 
+  const usdRate = silverAnalysis?.usdInr?.rate;
+  const liveGoldPrice = silverAnalysis?.gold?.price && usdRate
+    ? Math.round((silverAnalysis.gold.price / 31.1035) * 10 * usdRate)
+    : null;
+  const liveSilverPrice = silverAnalysis?.silver?.price && usdRate
+    ? Math.round(silverAnalysis.silver.price * 32.1507 * usdRate)
+    : null;
+  const goldDisplay = liveGoldPrice || goldData.currentPrice;
+  const silverDisplay = liveSilverPrice || silverData.currentPrice;
+
   const renderPrediction = (prediction, metal, data) => {
     if (!prediction) return null;
 
@@ -193,7 +203,7 @@ export default function GoldSilverPredictor() {
           <span className="price-icon">🥇</span>
           <div className="price-info">
             <span className="price-label">Gold (Spot)</span>
-            <span className="price-value">₹{goldData.currentPrice.toLocaleString('en-IN')}</span>
+            <span className="price-value">₹{goldDisplay.toLocaleString('en-IN')}</span>
             <span className="price-unit">{goldData.unit}</span>
           </div>
         </div>
@@ -201,7 +211,7 @@ export default function GoldSilverPredictor() {
           <span className="price-icon">🥈</span>
           <div className="price-info">
             <span className="price-label">Silver (Spot)</span>
-            <span className="price-value">₹{silverData.currentPrice.toLocaleString('en-IN')}</span>
+            <span className="price-value">₹{silverDisplay.toLocaleString('en-IN')}</span>
             <span className="price-unit">{silverData.unit}</span>
           </div>
         </div>
@@ -209,8 +219,8 @@ export default function GoldSilverPredictor() {
           <span className="price-icon">⚖️</span>
           <div className="price-info">
             <span className="price-label">Gold/Silver Ratio</span>
-            <span className="price-value">{(goldData.currentPrice * 10 / silverData.currentPrice).toFixed(1)}</span>
-            <span className="price-unit">Silver {85 > (goldData.currentPrice * 10 / silverData.currentPrice) ? 'undervalued' : 'near fair'}</span>
+            <span className="price-value">{(goldDisplay * 100 / silverDisplay).toFixed(1)}</span>
+            <span className="price-unit">Silver {85 > (goldDisplay * 100 / silverDisplay) ? 'undervalued' : 'near fair'}</span>
           </div>
         </div>
       </div>

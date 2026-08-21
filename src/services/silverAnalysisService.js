@@ -1,11 +1,14 @@
-const YAHOO_BASE = '/yahoo/v8/finance/chart';
+import { YAHOO_CHART_BASE } from './marketDataService';
+import { fetchResilient } from '../utils/fetchResilient';
+
+const YAHOO_BASE = YAHOO_CHART_BASE;
 
 export async function fetchSilverAnalysis() {
   try {
     const [silverWeekly, goldWeekly, usdinr] = await Promise.allSettled([
-      fetch(`${YAHOO_BASE}/SI=F?range=5d&interval=1d`).then(r => r.json()),
-      fetch(`${YAHOO_BASE}/GC=F?range=5d&interval=1d`).then(r => r.json()),
-      fetch(`${YAHOO_BASE}/USDINR=X?range=5d&interval=1d`).then(r => r.json())
+      fetchResilient(`${YAHOO_BASE}/SI=F?range=5d&interval=1d`).then(r => r.json()),
+      fetchResilient(`${YAHOO_BASE}/GC=F?range=5d&interval=1d`).then(r => r.json()),
+      fetchResilient(`${YAHOO_BASE}/USDINR=X?range=5d&interval=1d`).then(r => r.json())
     ]);
 
     const silverData = silverWeekly.status === 'fulfilled' ? silverWeekly.value?.chart?.result?.[0] : null;

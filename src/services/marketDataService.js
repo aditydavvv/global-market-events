@@ -1,4 +1,6 @@
-const YAHOO_FINANCE_BASE = '/yahoo/v8/finance/chart';
+const YAHOO_FINANCE_BASE = import.meta.env.DEV
+  ? '/yahoo/v8/finance/chart'
+  : 'https://query2.finance.yahoo.com/v8/finance/chart';
 
 const SYMBOLS = {
   nifty50: '^NSEI',
@@ -18,10 +20,14 @@ const SYMBOLS = {
   tataSilverETF: 'TATSILV.NS'
 };
 
+import { fetchResilient } from '../utils/fetchResilient';
+
+export const YAHOO_CHART_BASE = YAHOO_FINANCE_BASE;
+
 async function fetchYahooData(symbol, range = '1d', interval = '5m') {
   try {
     const url = `${YAHOO_FINANCE_BASE}/${encodeURIComponent(symbol).replace(/%3D/g, '=')}?range=${range}&interval=${interval}`;
-    const response = await fetch(url);
+    const response = await fetchResilient(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
     return data.chart?.result?.[0] || null;
