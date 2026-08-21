@@ -46,6 +46,7 @@ export default function GoldSilverPredictor() {
   const tataSilverPrediction = predictTataSilverETF(silverAnalysis, marketDepth.tataSilver);
 
   const goldData = metalETFs.gold;
+  const silverData = metalETFs.silver;
 
   const renderPrediction = (prediction, metal, data) => {
     if (!prediction) return null;
